@@ -37,7 +37,7 @@ const storage = getStorage(app);
 
 // --- TETAPAN ADMIN & AKSES ---
 // Gantikan e-mel ini dengan e-mel sebenar yang akan jadi Admin (boleh padam laporan semua orang)
-const ADMIN_EMAILS = ['sekolah-cm1@moe-dl.edu.my', 'sekolah-cm5@moe-dl.edu.my', 'faizfoat@gmail.com']; 
+const ADMIN_EMAILS = ['sekolah-4166-cm1@moe-dl.edu.my', 'sekolah-4166-cm5@moe-dl.edu.my, 'faizfoat@gmail.com']; 
 
 // --- KOMPONEN UTAMA (APP) ---
 export default function App() {
@@ -606,8 +606,8 @@ function UploadForm({ onCancel, onSuccess, currentUser }) {
 function PresentationViewer({ report, onClose }) {
   const viewerRef = useRef(null);
   
-  // Menggunakan enjin Microsoft Office Web Viewer percuma
-  const iframeUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(report.fileUrl)}`;
+  // Menggunakan enjin Google Docs Viewer kerana ia lebih serasi dengan Firebase URL
+  const iframeUrl = `https://docs.google.com/gview?url=${encodeURIComponent(report.fileUrl)}&embedded=true`;
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -630,6 +630,16 @@ function PresentationViewer({ report, onClose }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* Butang Muat Turun Alternatif ditambah */}
+          <a 
+            href={report.fileUrl} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="p-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors text-white text-xs font-medium mr-2"
+            title="Muat Turun Fail"
+          >
+            Muat Turun Asal
+          </a>
           <button onClick={toggleFullscreen} className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-300 hover:text-white" title="Penuh Skrin">
             <Maximize className="w-5 h-5" />
           </button>
@@ -641,7 +651,7 @@ function PresentationViewer({ report, onClose }) {
       </div>
 
       <div ref={viewerRef} className="flex-1 w-full bg-slate-800 flex items-center justify-center p-2 md:p-6">
-        <div className="w-full h-full max-w-6xl bg-white shadow-2xl relative rounded-md overflow-hidden">
+        <div className="w-full h-full max-w-6xl bg-white shadow-2xl relative rounded-md overflow-hidden flex flex-col items-center justify-center">
           {/* Iframe Paparan Sebenar */}
           <iframe 
             src={iframeUrl} 
@@ -649,9 +659,18 @@ function PresentationViewer({ report, onClose }) {
             height="100%" 
             frameBorder="0"
             title="Presentation Viewer"
-            className="w-full h-full"
+            className="w-full h-full z-10 relative bg-white"
             allowFullScreen
           ></iframe>
+          
+          {/* Teks loading di belakang iframe */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 z-0 bg-slate-50">
+            <Loader2 className="w-8 h-8 animate-spin mb-4 text-blue-500" />
+            <p className="font-medium">Memuatkan paparan dokumen...</p>
+            <p className="text-sm mt-2 text-center px-4 max-w-md">
+              Jika paparan kekal putih dalam masa yang lama, sila muat semula (refresh) atau terus gunakan butang <br/><b>"Muat Turun Asal"</b> di penjuru atas.
+            </p>
+          </div>
         </div>
       </div>
     </div>
