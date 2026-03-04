@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   MonitorPlay, LayoutDashboard, UploadCloud, Users, LogOut, 
   FileText, Calendar, Search, Plus, Maximize, X, Trash2, Edit3, 
-  CheckCircle2, AlertCircle, PlaySquare, Loader2, RefreshCw
+  CheckCircle2, AlertCircle, PlaySquare, Loader2, RefreshCw, LogIn
 } from 'lucide-react';
 
 // --- FIREBASE IMPORTS ---
@@ -40,7 +40,8 @@ const ADMIN_EMAILS = ['sekolah-4166-cm1@moe-dl.edu.my', 'sekolah-4166-cm5@moe-dl
 
 // --- KOMPONEN UTAMA (APP) ---
 export default function App() {
-  const [currentView, setCurrentView] = useState('login');
+  // TUKAR: Default paparan sekarang adalah 'dashboard' supaya pelawat terus nampak senarai
+  const [currentView, setCurrentView] = useState('dashboard');
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
   const [reports, setReports] = useState([]);
@@ -58,20 +59,20 @@ export default function App() {
           email: user.email,
           role: role
         });
-        setCurrentView('dashboard');
+        // Jika asalnya di halaman login, bawa ke dashboard. Jika tidak, kekal di halaman semasa.
+        if (currentView === 'login') setCurrentView('dashboard');
       } else {
+        // Jika tiada user, set null. Paparan kekal di dashboard sebagai pelawat.
         setCurrentUser(null);
-        setCurrentView('login');
       }
       setLoadingApp(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [currentView]);
 
-  // Tarik data laporan dari Firestore (Real-time)
+  // Tarik data laporan dari Firestore (Real-time) - KINI DIBUKA KEPADA AWAM
   useEffect(() => {
-    if (!currentUser) return;
-
+    // TUKAR: Buang sekatan 'if (!currentUser) return;' supaya pelawat juga dapat baca senarai
     const q = query(collection(db, "reports"), orderBy("week", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const reportsData = [];
@@ -82,7 +83,7 @@ export default function App() {
     });
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, []);
 
   // Fungsi Log Masuk (Google)
   const handleLogin = async () => {
@@ -95,7 +96,7 @@ export default function App() {
       
       // SYARAT AKSES: Hanya e-mel MOE dan Gmail dibenarkan untuk ujian
       if (userEmail.endsWith('@moe-dl.edu.my') || userEmail.endsWith('@gmail.com')) {
-        // Berjaya log masuk (Akan diuruskan oleh onAuthStateChanged)
+        setCurrentView('dashboard'); // Berjaya log masuk, kembali ke dashboard
       } else {
         await signOut(auth);
         alert("Akses Ditolak! Sila gunakan e-mel rasmi sekolah/DELIMa sahaja.");
@@ -111,6 +112,7 @@ export default function App() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      setCurrentView('dashboard');
     } catch (error) {
       console.error("Ralat log keluar:", error);
     }
@@ -125,10 +127,7 @@ export default function App() {
   const deleteReport = async (id, fileUrl) => {
     if(window.confirm('Adakah anda pasti mahu memadam laporan ini? Tindakan ini tidak boleh diundur.')) {
       try {
-        // 1. Padam dari Firestore
         await deleteDoc(doc(db, "reports", id));
-        
-        // 2. Padam fail dari Storage
         try {
           if (fileUrl) {
             const fileRef = ref(storage, fileUrl);
@@ -164,7 +163,7 @@ export default function App() {
                   onError={(e) => { e.target.onerror = null; e.target.src = "https://api.iconify.design/lucide:school.svg?color=%231e3a8a" }}
                 />
               </div>
-              <h1 className="text-2xl font-bold text-white">e-Perhimpunan</h1>
+              <h1 className="text-2xl font-bold text-white">Log Masuk Sistem</h1>
               <p className="text-blue-100 mt-2 text-sm">SMK Dato' Onn, Batu Pahat</p>
             </div>
           </div>
@@ -176,9 +175,17 @@ export default function App() {
               <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
               Log Masuk (Google / DELIMa)
             </button>
-            <p className="text-center text-xs text-slate-400 mt-6">
-              Sistem ini dikhaskan untuk kegunaan warga sekolah sahaja.
+            <p className="text-center text-xs text-slate-400 mt-4">
+              Akses memuat naik dan memadam laporan hanya untuk warga sekolah sahaja.
             </p>
+            <div className="pt-4 border-t border-slate-100 text-center">
+              <button 
+                onClick={() => setCurrentView('dashboard')}
+                className="text-sm font-medium text-blue-600 hover:text-blue-800 underline transition-colors"
+              >
+                Kembali ke Paparan Awam
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -208,22 +215,33 @@ export default function App() {
         
         <nav className="flex-1 p-4 space-y-1">
           <SidebarItem icon={<LayoutDashboard />} label="Papan Pemuka" active={currentView === 'dashboard'} onClick={() => setCurrentView('dashboard')} />
-          <SidebarItem icon={<UploadCloud />} label="Muat Naik Laporan" active={currentView === 'upload'} onClick={() => setCurrentView('upload')} />
+          {/* TUKAR: Hanya tunjukkan menu Muat Naik jika sudah log masuk */}
+          {currentUser && (
+            <SidebarItem icon={<UploadCloud />} label="Muat Naik Laporan" active={currentView === 'upload'} onClick={() => setCurrentView('upload')} />
+          )}
         </nav>
 
         <div className="p-4 border-t border-slate-100">
           <div className="flex items-center gap-3 mb-4 px-2">
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold shrink-0">
-              {currentUser?.name?.charAt(0) || 'U'}
+              {currentUser ? currentUser.name.charAt(0) : 'P'}
             </div>
             <div className="overflow-hidden">
-              <p className="text-sm font-medium text-slate-800 truncate">{currentUser?.name}</p>
-              <p className="text-xs text-slate-500 capitalize">{currentUser?.role}</p>
+              <p className="text-sm font-medium text-slate-800 truncate">{currentUser ? currentUser.name : 'Pelawat Awam'}</p>
+              <p className="text-xs text-slate-500 capitalize">{currentUser ? currentUser.role : 'Hanya Paparan'}</p>
             </div>
           </div>
-          <button onClick={handleLogout} className="flex items-center gap-2 text-slate-500 hover:text-red-600 p-2 w-full rounded-lg transition-colors text-sm font-medium">
-            <LogOut className="w-4 h-4" /> Log Keluar
-          </button>
+          
+          {/* TUKAR: Paparkan butang Log Keluar atau Log Masuk berdasarkan status */}
+          {currentUser ? (
+            <button onClick={handleLogout} className="flex items-center gap-2 text-slate-500 hover:text-red-600 p-2 w-full rounded-lg transition-colors text-sm font-medium">
+              <LogOut className="w-4 h-4" /> Log Keluar
+            </button>
+          ) : (
+            <button onClick={() => setCurrentView('login')} className="flex items-center justify-center gap-2 bg-blue-50 text-blue-600 hover:bg-blue-100 p-2.5 w-full rounded-lg transition-colors text-sm font-medium border border-blue-100">
+              <LogIn className="w-4 h-4" /> Log Masuk Guru
+            </button>
+          )}
         </div>
       </aside>
 
@@ -234,9 +252,15 @@ export default function App() {
             <img src="/logo-smk.png" alt="Logo" className="w-8 h-8 object-contain" onError={(e) => { e.target.onerror = null; e.target.src = "https://api.iconify.design/lucide:school.svg?color=%231e3a8a" }}/>
             <h2 className="font-bold text-blue-900">e-Perhimpunan</h2>
           </div>
-          <button onClick={handleLogout} className="text-slate-500">
-            <LogOut className="w-5 h-5" />
-          </button>
+          {currentUser ? (
+            <button onClick={handleLogout} className="text-slate-500" title="Log Keluar">
+              <LogOut className="w-5 h-5" />
+            </button>
+          ) : (
+            <button onClick={() => setCurrentView('login')} className="text-blue-600 bg-blue-50 p-2 rounded-lg text-sm font-medium" title="Log Masuk">
+              Log Masuk
+            </button>
+          )}
         </header>
 
         <div className="flex-1 overflow-auto p-4 md:p-8">
@@ -249,14 +273,13 @@ export default function App() {
               onAddNew={() => setCurrentView('upload')}
             />
           )}
-          {currentView === 'upload' && (
+          {currentView === 'upload' && currentUser && (
             <UploadForm 
               onCancel={() => setCurrentView('dashboard')} 
               onSuccess={() => setCurrentView('dashboard')}
               currentUser={currentUser}
             />
           )}
-          {/* PresentationViewer kini dipaparkan di luar kotak overflow utama menggunakan fixed positioning */}
           {currentView === 'viewer' && selectedReport && (
             <PresentationViewer 
               report={selectedReport} 
@@ -300,14 +323,20 @@ function Dashboard({ reports, currentUser, onView, onDelete, onAddNew }) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">Papan Pemuka</h1>
-          <p className="text-slate-500 mt-1">Selamat bertugas, {currentUser?.name}.</p>
+          <p className="text-slate-500 mt-1">
+            {/* TUKAR: Sapaan berbeza untuk Pelawat dan Guru */}
+            {currentUser ? `Selamat bertugas, ${currentUser.name}.` : 'Paparan awam laporan perhimpunan mingguan.'}
+          </p>
         </div>
-        <button 
-          onClick={onAddNew}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl shadow-md shadow-blue-200 font-medium flex items-center gap-2 transition-all active:scale-95"
-        >
-          <Plus className="w-5 h-5" /> Tambah Laporan
-        </button>
+        {/* TUKAR: Hanya tunjukkan butang Tambah Laporan jika pengguna log masuk */}
+        {currentUser && (
+          <button 
+            onClick={onAddNew}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl shadow-md shadow-blue-200 font-medium flex items-center gap-2 transition-all active:scale-95"
+          >
+            <Plus className="w-5 h-5" /> Tambah Laporan
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
@@ -368,8 +397,8 @@ function Dashboard({ reports, currentUser, onView, onDelete, onAddNew }) {
                     </div>
                   </td>
                   <td className="p-4">
-                    {/* BUTTON SENTIASA KELIHATAN, BIRU -> MERAH BILA HOVER */}
                     <div className="flex justify-end gap-2">
+                      {/* Butang Buka sentiasa kelihatan untuk semua orang (Pelawat/Guru) */}
                       <button 
                         onClick={() => onView(report)}
                         className="p-2 bg-blue-600 text-white hover:bg-red-600 rounded-lg transition-colors tooltip flex items-center gap-1 text-xs px-3 shadow-sm"
@@ -378,7 +407,8 @@ function Dashboard({ reports, currentUser, onView, onDelete, onAddNew }) {
                         <MonitorPlay className="w-4 h-4" /> <span className="hidden lg:inline">Buka</span>
                       </button>
                       
-                      {(currentUser?.role === 'admin' || currentUser?.email === report.teacherEmail) && (
+                      {/* TUKAR: Butang Padam hanya dipaparkan jika pengguna telah log masuk DAN merupakan admin ATAU pemilik laporan */}
+                      {(currentUser && (currentUser.role === 'admin' || currentUser.email === report.teacherEmail)) && (
                         <button 
                           onClick={() => onDelete(report.id, report.fileUrl)}
                           className="p-2 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-lg transition-colors shadow-sm"
@@ -607,9 +637,8 @@ function UploadForm({ onCancel, onSuccess, currentUser }) {
 // --- PAPARAN: VIEWER SEBENAR (GOOGLE DOCS VIEWER + FIXED OVERLAY) ---
 function PresentationViewer({ report, onClose }) {
   const viewerRef = useRef(null);
-  const [iframeKey, setIframeKey] = useState(0); // State untuk fungsi Refresh
+  const [iframeKey, setIframeKey] = useState(0);
   
-  // Menggunakan enjin Google Docs Viewer yang lebih stabil dengan Firebase Storage URLs
   const iframeUrl = `https://docs.google.com/gview?url=${encodeURIComponent(report.fileUrl)}&embedded=true`;
 
   const toggleFullscreen = () => {
@@ -620,11 +649,9 @@ function PresentationViewer({ report, onClose }) {
     }
   };
 
-  // Fungsi untuk muat semula (refresh) iframe jika ia tersangkut
   const reloadViewer = () => setIframeKey(prev => prev + 1);
 
   return (
-    // DIKEMAS KINI: Gunakan 'fixed w-full h-full' untuk tutup seluruh skrin 
     <div className="fixed inset-0 w-full h-full bg-slate-900/95 z-[100] flex flex-col backdrop-blur-sm animate-in fade-in duration-300">
       <div className="flex justify-between items-center p-3 bg-slate-900 text-white border-b border-slate-800">
         <div className="flex items-center gap-3">
@@ -638,7 +665,6 @@ function PresentationViewer({ report, onClose }) {
         </div>
         <div className="flex items-center gap-2">
           
-          {/* Butang Muat Semula (Refresh) Iframe */}
           <button 
             onClick={reloadViewer} 
             className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors text-white text-xs font-medium mr-1 flex items-center gap-1 shadow-sm"
@@ -647,7 +673,6 @@ function PresentationViewer({ report, onClose }) {
             <RefreshCw className="w-4 h-4" /> Muat Semula
           </button>
 
-          {/* Butang Muat Turun Alternatif */}
           <a 
             href={report.fileUrl} 
             target="_blank" 
@@ -671,7 +696,6 @@ function PresentationViewer({ report, onClose }) {
       <div ref={viewerRef} className="flex-1 w-full bg-slate-800 flex items-center justify-center p-2 md:p-6">
         <div className="w-full h-full max-w-6xl bg-white shadow-2xl relative rounded-md overflow-hidden flex flex-col items-center justify-center">
           
-          {/* Iframe Paparan Sebenar */}
           <iframe 
             key={iframeKey}
             src={iframeUrl} 
@@ -683,7 +707,6 @@ function PresentationViewer({ report, onClose }) {
             allowFullScreen
           ></iframe>
           
-          {/* Teks loading di belakang iframe */}
           <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 z-0 bg-slate-50">
             <Loader2 className="w-8 h-8 animate-spin mb-4 text-blue-500" />
             <p className="font-medium text-slate-700">Memuatkan dokumen dari pelayan awan...</p>
