@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   MonitorPlay, LayoutDashboard, UploadCloud, Users, LogOut, 
   FileText, Calendar, Search, Plus, Maximize, X, Trash2, Edit3, 
-  CheckCircle2, AlertCircle, PlaySquare, Loader2
+  CheckCircle2, AlertCircle, PlaySquare, Loader2, RefreshCw
 } from 'lucide-react';
 
 // --- FIREBASE IMPORTS ---
@@ -256,6 +256,7 @@ export default function App() {
               currentUser={currentUser}
             />
           )}
+          {/* PresentationViewer kini dipaparkan di luar kotak overflow utama menggunakan fixed positioning */}
           {currentView === 'viewer' && selectedReport && (
             <PresentationViewer 
               report={selectedReport} 
@@ -603,12 +604,13 @@ function UploadForm({ onCancel, onSuccess, currentUser }) {
   );
 }
 
-// --- PAPARAN: OFFICE VIEWER SEBENAR (IFRAME) ---
+// --- PAPARAN: VIEWER SEBENAR (GOOGLE DOCS VIEWER + FIXED OVERLAY) ---
 function PresentationViewer({ report, onClose }) {
   const viewerRef = useRef(null);
+  const [iframeKey, setIframeKey] = useState(0); // State untuk fungsi Refresh
   
-  // TUKAR SEMULA KE MICROSOFT OFFICE VIEWER (Slide takkan terhimpit lagi)
-  const iframeUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(report.fileUrl)}`;
+  // Menggunakan enjin Google Docs Viewer yang lebih stabil dengan Firebase Storage URLs
+  const iframeUrl = `https://docs.google.com/gview?url=${encodeURIComponent(report.fileUrl)}&embedded=true`;
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -618,8 +620,12 @@ function PresentationViewer({ report, onClose }) {
     }
   };
 
+  // Fungsi untuk muat semula (refresh) iframe jika ia tersangkut
+  const reloadViewer = () => setIframeKey(prev => prev + 1);
+
   return (
-    <div className="absolute inset-0 bg-slate-900/95 z-50 flex flex-col backdrop-blur-sm animate-in fade-in duration-300">
+    // DIKEMAS KINI: Gunakan 'fixed w-full h-full' untuk tutup seluruh skrin 
+    <div className="fixed inset-0 w-full h-full bg-slate-900/95 z-[100] flex flex-col backdrop-blur-sm animate-in fade-in duration-300">
       <div className="flex justify-between items-center p-3 bg-slate-900 text-white border-b border-slate-800">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-orange-500 rounded text-white shrink-0">
@@ -631,16 +637,27 @@ function PresentationViewer({ report, onClose }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* Butang Muat Turun Alternatif ditambah */}
+          
+          {/* Butang Muat Semula (Refresh) Iframe */}
+          <button 
+            onClick={reloadViewer} 
+            className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors text-white text-xs font-medium mr-1 flex items-center gap-1 shadow-sm"
+            title="Muat Semula Paparan"
+          >
+            <RefreshCw className="w-4 h-4" /> Muat Semula
+          </button>
+
+          {/* Butang Muat Turun Alternatif */}
           <a 
             href={report.fileUrl} 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="p-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors text-white text-xs font-medium mr-2"
-            title="Muat Turun Fail"
+            className="p-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors text-white text-xs font-medium mr-2 shadow-sm"
+            title="Muat Turun Fail Ke Komputer"
           >
             Muat Turun Asal
           </a>
+          
           <button onClick={toggleFullscreen} className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-300 hover:text-white" title="Penuh Skrin">
             <Maximize className="w-5 h-5" />
           </button>
@@ -653,8 +670,10 @@ function PresentationViewer({ report, onClose }) {
 
       <div ref={viewerRef} className="flex-1 w-full bg-slate-800 flex items-center justify-center p-2 md:p-6">
         <div className="w-full h-full max-w-6xl bg-white shadow-2xl relative rounded-md overflow-hidden flex flex-col items-center justify-center">
+          
           {/* Iframe Paparan Sebenar */}
           <iframe 
+            key={iframeKey}
             src={iframeUrl} 
             width="100%" 
             height="100%" 
@@ -667,9 +686,9 @@ function PresentationViewer({ report, onClose }) {
           {/* Teks loading di belakang iframe */}
           <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 z-0 bg-slate-50">
             <Loader2 className="w-8 h-8 animate-spin mb-4 text-blue-500" />
-            <p className="font-medium">Memuatkan paparan dokumen...</p>
-            <p className="text-sm mt-2 text-center px-4 max-w-md">
-              Membuka sambungan selamat ke Microsoft Office Viewer.
+            <p className="font-medium text-slate-700">Memuatkan dokumen dari pelayan awan...</p>
+            <p className="text-sm mt-2 text-center px-4 max-w-md text-slate-500">
+              Sila tunggu sebentar. Jika paparan kekal putih untuk waktu yang lama, sila klik butang <b>"Muat Semula"</b> di penjuru atas skrin.
             </p>
           </div>
         </div>
