@@ -19,7 +19,7 @@ import {
   getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject 
 } from "firebase/storage";
 
-// --- FIREBASE CONFIGURATION (Konfigurasi Sebenar Anda) ---
+// --- FIREBASE CONFIGURATION (Konfigurasi Sebenar Cikgu) ---
 const firebaseConfig = {
   apiKey: "AIzaSyAKI4yO_zUR5ayE0ilCb1lmg5yz-x4p2PQ",
   authDomain: "perhimpunan-rasmi.firebaseapp.com",
@@ -36,8 +36,7 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 
 // --- TETAPAN ADMIN & AKSES ---
-// Gantikan e-mel ini dengan e-mel sebenar yang akan jadi Admin (boleh padam laporan semua orang)
-const ADMIN_EMAILS = ['sekolah-4166-cm1@moe-dl.edu.my', 'sekolah-4166-cm5@moe-dl.edu.my, 'faizfoat@gmail.com']; 
+const ADMIN_EMAILS = ['sekolah-4166-cm1@moe-dl.edu.my', 'sekolah-4166-cm5@moe-dl.edu.my', 'faizfoat@gmail.com']; 
 
 // --- KOMPONEN UTAMA (APP) ---
 export default function App() {
@@ -368,18 +367,20 @@ function Dashboard({ reports, currentUser, onView, onDelete, onAddNew }) {
                     </div>
                   </td>
                   <td className="p-4">
-                    <div className="flex justify-end gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* BUTTON SENTIASA KELIHATAN, BIRU -> MERAH BILA HOVER */}
+                    <div className="flex justify-end gap-2">
                       <button 
                         onClick={() => onView(report)}
-                        className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors tooltip flex items-center gap-1 text-xs px-3"
+                        className="p-2 bg-blue-600 text-white hover:bg-red-600 rounded-lg transition-colors tooltip flex items-center gap-1 text-xs px-3 shadow-sm"
                         title="Buka Presentation"
                       >
                         <MonitorPlay className="w-4 h-4" /> <span className="hidden lg:inline">Buka</span>
                       </button>
+                      
                       {(currentUser?.role === 'admin' || currentUser?.email === report.teacherEmail) && (
                         <button 
                           onClick={() => onDelete(report.id, report.fileUrl)}
-                          className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                          className="p-2 text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-lg transition-colors shadow-sm"
                           title="Padam Laporan"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -606,8 +607,8 @@ function UploadForm({ onCancel, onSuccess, currentUser }) {
 function PresentationViewer({ report, onClose }) {
   const viewerRef = useRef(null);
   
-  // Menggunakan enjin Google Docs Viewer kerana ia lebih serasi dengan Firebase URL
-  const iframeUrl = `https://docs.google.com/gview?url=${encodeURIComponent(report.fileUrl)}&embedded=true`;
+  // TUKAR SEMULA KE MICROSOFT OFFICE VIEWER (Slide takkan terhimpit lagi)
+  const iframeUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(report.fileUrl)}`;
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -668,7 +669,7 @@ function PresentationViewer({ report, onClose }) {
             <Loader2 className="w-8 h-8 animate-spin mb-4 text-blue-500" />
             <p className="font-medium">Memuatkan paparan dokumen...</p>
             <p className="text-sm mt-2 text-center px-4 max-w-md">
-              Jika paparan kekal putih dalam masa yang lama, sila muat semula (refresh) atau terus gunakan butang <br/><b>"Muat Turun Asal"</b> di penjuru atas.
+              Membuka sambungan selamat ke Microsoft Office Viewer.
             </p>
           </div>
         </div>
